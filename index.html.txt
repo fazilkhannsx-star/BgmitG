@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INDRA ESPORTS | BGMI Custom Room & Tournament Arena</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+  :root {
+    --bg: #080b12;
+    --surface: #0f1522;
+    --surface-2: #161f33;
+    --border: rgba(255, 179, 0, 0.22);
+    --gold: #ffb300;
+    --gold-dim: rgba(255, 179, 0, 0.14);
+    --cyan: #00e5ff;
+    --green: #00e676;
+    --red: #ff3d57;
+    --text: #f3f6fc;
+    --muted: #8c9ab5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(circle at top right, #161f38 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 50px;
+  }
+  h1, h2, h3, .brand, .badge-font { font-family: 'Orbitron', sans-serif; letter-spacing: 0.6px; }
+  .raj { font-family: 'Rajdhani', sans-serif; font-weight: 700; }
+
+  header {
+    position: sticky; top: 0; z-index: 40;
+    background: rgba(8, 11, 18, 0.94);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 18px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .brand-wrap {
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  .logo-box {
+    width: 38px; height: 38px; border-radius: 9px;
+    background: linear-gradient(135deg, var(--gold), #ff6f00);
+    display: grid; place-items: center; color: #080b12; font-weight: 900; font-size: 18px;
+    box-shadow: 0 0 18px rgba(255, 179, 0, 0.35);
+  }
+  .brand { font-size: 1.05rem; font-weight: 900; color: #fff; }
+  .brand span { color: var(--gold); }
+  .sub-tag { font-size: 0.68rem; color: var(--cyan); text-transform: uppercase; letter-spacing: 1.2px; }
+
+  .sync-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 99px; font-size: 0.72rem; font-weight: 600;
+    background: var(--surface-2); border: 1px solid rgba(255,255,255,0.1);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
+  .dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+  nav { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .nav-btn {
+    background: transparent; border: 1px solid transparent; color: var(--muted);
+    padding: 7px 11px; border-radius: 8px; cursor: pointer; font-family: 'Rajdhani', sans-serif;
+    font-size: 0.92rem; font-weight: 700; text-transform: uppercase; transition: 0.2s;
+  }
+  .nav-btn:hover, .nav-btn.active {
+    color: var(--gold); background: var(--gold-dim); border-color: var(--border);
+  }
+  .auth-btn {
+    background: linear-gradient(135deg, var(--gold), #ff8f00);
+    color: #080b12; border: none; padding: 7px 13px; border-radius: 8px;
+    font-family: 'Rajdhani', sans-serif; font-weight: 800; font-size: 0.92rem; cursor: pointer;
+  }
+  .auth-btn.outline {
+    background: var(--surface-2); color: var(--text); border: 1px solid rgba(255,255,255,0.16);
+  }
+
+  .container { max-width: 1120px; margin: 0 auto; padding: 18px 14px; }
+
+  .hero {
+    background: linear-gradient(135deg, rgba(255,179,0,0.12), rgba(0,229,255,0.06)), var(--surface);
+    border: 1px solid var(--border); border-radius: 16px; padding: 22px 18px;
+    margin-bottom: 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px;
+  }
+  .hero h1 { font-size: clamp(1.25rem, 3vw, 1.85rem); line-height: 1.25; margin-bottom: 6px; }
+  .hero h1 span { color: var(--gold); }
+  .hero p { color: var(--muted); font-size: 0.88rem; max-width: 580px; }
+  .upi-banner {
+    background: rgba(0,0,0,0.45); border: 1px dashed var(--gold);
+    padding: 10px 14px; border-radius: 10px; font-size: 0.82rem;
+  }
+  .upi-banner strong { color: var(--gold); font-size: 0.96rem; letter-spacing: 0.5px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--surface); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--border); }
+
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .pill {
+    padding: 3px 9px; border-radius: 6px; font-size: 0.72rem; font-weight: 800;
+    font-family: 'Rajdhani', sans-serif; text-transform: uppercase; letter-spacing: 0.8px;
+  }
+  .pill.free { background: rgba(0, 230, 118, 0.16); color: var(--green); border: 1px solid rgba(0,230,118,0.4); }
+  .pill.paid { background: rgba(255, 179, 0, 0.16); color: var(--gold); border: 1px solid rgba(255,179,0,0.4); }
+  .pill.map { background: rgba(0, 229, 255, 0.12); color: var(--cyan); }
+  .pill.pending { background: rgba(255, 179, 0, 0.18); color: var(--gold); }
+  .pill.verified { background: rgba(0, 230, 118, 0.18); color: var(--green); }
+  .pill.rejected { background: rgba(255, 61, 87, 0.18); color: var(--red); }
+
+  .stats-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    background: var(--surface-2); padding: 10px; border-radius: 10px; text-align: center;
+  }
+  .stat-lbl { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; }
+  .stat-val { font-family: 'Rajdhani', sans-serif; font-size: 1.05rem; font-weight: 700; color: #fff; }
+  .stat-val.gold { color: var(--gold); }
+  .stat-val.green { color: var(--green); }
+
+  .progress-wrap { background: #090d16; height: 7px; border-radius: 99px; overflow: hidden; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--gold), var(--cyan)); transition: width 0.3s; }
+
+  .btn {
+    width: 100%; padding: 11px; border-radius: 9px; border: none; cursor: pointer;
+    font-family: 'Rajdhani', sans-serif; font-weight: 800; font-size: 1rem;
+    text-transform: uppercase; letter-spacing: 0.8px; transition: 0.2s;
+  }
+  .btn-gold { background: linear-gradient(135deg, var(--gold), #ff8f00); color: #080b12; }
+  .btn-gold:hover { filter: brightness(1.08); }
+  .btn-cyan { background: rgba(0, 229, 255, 0.16); color: var(--cyan); border: 1px solid rgba(0,229,255,0.4); }
+  .btn-green { background: var(--green); color: #05140b; }
+  .btn-red { background: rgba(255, 61, 87, 0.18); color: var(--red); border: 1px solid rgba(255,61,87,0.4); }
+  .btn-wa { background: #25D366; color: #06210f; display: flex; align-items: center; justify-content: center; gap: 7px; text-decoration: none; }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(4, 6, 12, 0.86); backdrop-filter: blur(6px);
+    display: none; place-items: center; z-index: 60; padding: 14px; overflow-y: auto;
+  }
+  .modal-bg.open { display: grid; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    width: 100%; max-width: 490px; padding: 20px; position: relative; margin: auto;
+  }
+  .modal-close {
+    position: absolute; top: 14px; right: 14px; background: var(--surface-2);
+    border: none; color: var(--muted); width: 30px; height: 30px; border-radius: 50%;
+    cursor: pointer; font-size: 16px;
+  }
+
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 0.78rem; color: var(--muted); margin-bottom: 5px; font-weight: 600; }
+  .field input, .field select, .field textarea {
+    width: 100%; background: var(--surface-2); border: 1px solid rgba(255,255,255,0.12);
+    color: var(--text); padding: 10px 12px; border-radius: 8px; font-size: 0.92rem;
+    font-family: 'Inter', sans-serif;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none; border-color: var(--gold);
+  }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .slot-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
+    max-height: 190px; overflow-y: auto; padding: 6px; background: #090d16; border-radius: 9px;
+  }
+  .slot-chip {
+    padding: 7px 4px; text-align: center; border-radius: 6px; font-size: 0.78rem;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; cursor: pointer;
+    background: var(--surface-2); border: 1px solid rgba(255,255,255,0.1); color: var(--text);
+  }
+  .slot-chip.taken { background: rgba(255,61,87,0.14); color: var(--red); border-color: rgba(255,61,87,0.3); cursor: not-allowed; }
+  .slot-chip.selected { background: var(--gold); color: #080b12; border-color: var(--gold); }
+
+  .admit-box {
+    background: linear-gradient(135deg, rgba(0,230,118,0.14), rgba(0,229,255,0.08));
+    border: 1px dashed var(--green); border-radius: 10px; padding: 12px; text-align: center;
+  }
+  .admit-code {
+    font-family: 'Orbitron', sans-serif; font-size: 1.75rem; font-weight: 900;
+    color: var(--green); letter-spacing: 5px; margin: 4px 0;
+  }
+  .room-box {
+    background: #090d16; border: 1px solid var(--cyan); border-radius: 9px;
+    padding: 10px; margin-top: 8px; font-size: 0.85rem;
+  }
+
+  .admin-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .tab-chip {
+    padding: 8px 13px; border-radius: 8px; background: var(--surface-2);
+    border: 1px solid rgba(255,255,255,0.1); color: var(--muted); cursor: pointer;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.92rem;
+  }
+  .tab-chip.active { background: var(--gold); color: #080b12; border-color: var(--gold); }
+
+  .toast {
+    position: fixed; bottom: 18px; right: 18px; z-index: 90;
+    background: var(--surface-2); border-left: 4px solid var(--gold);
+    color: #fff; padding: 12px 16px; border-radius: 9px; font-size: 0.86rem;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.55); display: none; max-width: 340px;
+  }
+  .toast.show { display: block; }
+  .empty { text-align: center; padding: 36px 16px; color: var(--muted); background: var(--surface); border-radius: 12px; }
+  .info-note { font-size: 0.78rem; color: var(--muted); background: rgba(255,255,255,0.04); padding: 9px 11px; border-radius: 8px; line-height: 1.45; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand-wrap" onclick="handleSecretLogoTap()" title="INDRA ESPORTS">
+    <div class="logo-box">IE</div>
+    <div>
+      <div class="brand">INDRA <span>ESPORTS</span></div>
+      <div class="sub-tag">BGMI Custom Room Arena</div>
+    </div>
+  </div>
+
+  <div class="sync-pill" id="syncStatusPill">
+    <span class="dot" id="syncDot"></span>
+    <span id="syncText">Local Mode</span>
+  </div>
+
+  <nav>
+    <button class="nav-btn active" onclick="showSection('matches', this)">Matches</button>
+    <button class="nav-btn" onclick="showSection('myslots', this)">My Slots</button>
+    <button class="nav-btn" onclick="showSection('support', this)">Support</button>
+    <button class="nav-btn" id="ownerNavBtn" style="display:none;color:var(--gold);border-color:var(--border)" onclick="showSection('admin', this)">Owner Panel</button>
+    <span id="authHeaderArea"></span>
+  </nav>
+</header>
+
+<div class="container">
+
+  <!-- MATCHES SECTION -->
+  <div id="sec-matches" class="section active">
+    <div class="hero">
+      <div>
+        <div class="pill paid" style="display:inline-block;margin-bottom:8px;">Live Scrims & Custom Rooms • Pay UPI: 9329910287</div>
+        <h1>BOOK YOUR <span>SLOT</span>.<br>GET <span>4-DIGIT ADMIT CODE</span>.</h1>
+        <p>Register with your verified Email & Mobile, submit your BGMI UID, ID Name & Team Name. Paid matches unlock a 4-Digit Admit Code upon payment verification.</p>
+      </div>
+      <div class="upi-banner">
+        <div style="color:var(--muted);margin-bottom:3px;">Official Tournament UPI / WhatsApp</div>
+        <strong>9329910287</strong>
+        <div style="font-size:0.74rem;color:var(--cyan);margin-top:3px;">Instant 4-Digit Admit Code after UTR check</div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <h2 style="font-size:1.1rem;">ACTIVE TOURNAMENTS</h2>
+      <div style="display:flex;gap:6px;">
+        <button class="tab-chip active" onclick="filterMatches('ALL', this)">All</button>
+        <button class="tab-chip" onclick="filterMatches('FREE', this)">Free</button>
+        <button class="tab-chip" onclick="filterMatches('PAID', this)">Paid</button>
+      </div>
+    </div>
+
+    <div class="grid" id="matchesGrid"></div>
+  </div>
+
+  <!-- MY SLOTS SECTION -->
+  <div id="sec-myslots" class="section">
+    <h2 style="font-size:1.15rem;margin-bottom:14px;">MY BOOKED SLOTS & 4-DIGIT ADMIT CODES</h2>
+    <div id="mySlotsContainer"></div>
+  </div>
+
+  <!-- SUPPORT & OWNER WHATSAPP PERMISSION SECTION -->
+  <div id="sec-support" class="section">
+    <div class="grid">
+      <div class="card">
+        <h3 style="font-size:1.05rem;">CUSTOMER SUPPORT & WHATSAPP ACCESS</h3>
+        <p class="info-note">Direct WhatsApp chat with Owner (<strong>9329910287</strong>) requires Owner permission first. Submit your query below; once approved by the Owner, your direct WhatsApp chat button unlocks automatically.</p>
+        <div class="field">
+          <label>Issue Category</label>
+          <select id="supCategory">
+            <option value="Payment / 4-Digit Admit Code">Payment / 4-Digit Admit Code</option>
+            <option value="Slot Change / BGMI UID Correction">Slot Change / BGMI UID Correction</option>
+            <option value="Room ID & Password Help">Room ID & Password Help</option>
+            <option value="Prize Pool / Other Query">Prize Pool / Other Query</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Describe Your Message</label>
+          <textarea id="supMessage" rows="3" placeholder="Write your BGMI IGN, Slot number, or UTR details..."></textarea>
+        </div>
+        <button class="btn btn-gold" onclick="submitSupportTicket()">Request Owner Permission & Send</button>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:1.05rem;">MY SUPPORT & WHATSAPP STATUS</h3>
+        <div id="myTicketsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OWNER / ADMIN PANEL -->
+  <div id="sec-admin" class="section">
+    <div id="adminLockBox" class="card" style="max-width:420px;margin:30px auto;text-align:center;">
+      <h2 style="font-size:1.15rem;">OWNER VERIFICATION</h2>
+      <p style="font-size:0.84rem;color:var(--muted);">Enter your secret Owner PIN to manage tournaments, verify payments, and issue 4-digit admit codes.</p>
+      <div class="field" style="margin-top:8px;">
+        <input type="password" id="adminPinInput" placeholder="Enter Secret Owner PIN" onkeydown="if(event.key==='Enter') unlockAdmin()">
+      </div>
+      <button class="btn btn-gold" onclick="unlockAdmin()">Unlock Owner Panel</button>
+    </div>
+
+    <div id="adminDashboard" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <h2 style="font-size:1.15rem;color:var(--gold);">OWNER CONTROL PANEL</h2>
+        <button class="auth-btn outline" onclick="lockAdmin()">Lock Owner Panel</button>
+      </div>
+
+      <div class="admin-tabs">
+        <button class="tab-chip active" onclick="switchAdminTab('bookings', this)">Payment & Admit Code Verify</button>
+        <button class="tab-chip" onclick="switchAdminTab('create', this)">+ Create Match</button>
+        <button class="tab-chip" onclick="switchAdminTab('manage', this)">Matches & Room ID</button>
+        <button class="tab-chip" onclick="switchAdminTab('tickets', this)">Support & WA Permission</button>
+        <button class="tab-chip" onclick="switchAdminTab('security', this)">Change Secret PIN</button>
+        <button class="tab-chip" onclick="switchAdminTab('cloud', this)">Firebase Live Sync</button>
+      </div>
+
+      <!-- TAB: VERIFY PAYMENTS & 4-DIGIT ADMIT CODE -->
+      <div id="atab-bookings" class="atab">
+        <div class="grid" id="adminBookingsGrid"></div>
+      </div>
+
+      <!-- TAB: CREATE MATCH -->
+      <div id="atab-create" class="atab" style="display:none;">
+        <div class="card" style="max-width:560px;">
+          <h3 style="font-size:1.05rem;">CREATE NEW BGMI TOURNAMENT</h3>
+          <div class="field"><label>Tournament Title</label><input id="mTitle" placeholder="e.g., INDRA NIGHT SCRIMS #12"></div>
+          <div class="row-2">
+            <div class="field">
+              <label>Map</label>
+              <select id="mMap">
+                <option>Erangel</option><option>Miramar</option><option>Sanhok</option><option>Livik</option><option>TDM Warehouse</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Mode / Perspective</label>
+              <select id="mMode">
+                <option>Squad • TPP</option><option>Duo • TPP</option><option>Solo • TPP</option><option>4v4 TDM</option>
+              </select>
+            </div>
+          </div>
+          <div class="row-2">
+            <div class="field">
+              <label>Match Type</label>
+              <select id="mType" onchange="toggleFeeField()">
+                <option value="PAID">PAID ROOM</option>
+                <option value="FREE">FREE ROOM</option>
+              </select>
+            </div>
+            <div class="field" id="feeFieldWrap">
+              <label>Entry Fee per Slot (₹)</label>
+              <input type="number" id="mFee" value="50" min="0">
+            </div>
+          </div>
+          <div class="row-2">
+            <div class="field"><label>Winning Prize Pool (₹)</label><input type="number" id="mPrize" value="1000" min="0"></div>
+            <div class="field"><label>Total Slots (Max 25)</label><input type="number" id="mSlots" value="25" min="2" max="100"></div>
+          </div>
+          <div class="field"><label>Match Date & Time</label><input id="mTime" placeholder="e.g., Tonight • 9:30 PM IST"></div>
+          <button class="btn btn-gold" onclick="createTournament()">Publish Tournament Live</button>
+        </div>
+      </div>
+
+      <!-- TAB: MANAGE MATCHES & ROOM ID -->
+      <div id="atab-manage" class="atab" style="display:none;">
+        <div class="grid" id="adminMatchesGrid"></div>
+      </div>
+
+      <!-- TAB: SUPPORT & WHATSAPP PERMISSION -->
+      <div id="atab-tickets" class="atab" style="display:none;">
+        <div class="grid" id="adminTicketsGrid"></div>
+      </div>
+
+      <!-- TAB: CHANGE SECRET PIN -->
+      <div id="atab-security" class="atab" style="display:none;">
+        <div class="card" style="max-width:460px;">
+          <h3 style="font-size:1.05rem;">CHANGE SECRET OWNER PIN</h3>
+          <p class="info-note">Set a private PIN known only to you. Tip: Tap the <strong>INDRA ESPORTS</strong> logo at the top-left 5 times whenever you want to open the Owner Login screen.</p>
+          <div class="field">
+            <label>New Secret PIN (Min 4 characters)</label>
+            <input type="text" id="newOwnerPinInput" placeholder="Enter your new secret PIN">
+          </div>
+          <button class="btn btn-gold" onclick="updateSecretPin()">Save New Secret PIN</button>
+        </div>
+      </div>
+
+      <!-- TAB: FIREBASE REAL-TIME SYNC -->
+      <div id="atab-cloud" class="atab" style="display:none;">
+        <div class="card" style="max-width:640px;">
+          <h3 style="font-size:1.05rem;color:var(--cyan);">REAL-TIME MULTI-DEVICE CLOUD SYNC (FIREBASE)</h3>
+          <p class="info-note">
+            <strong>4-Step Free Setup (2 Minutes):</strong><br>
+            1. Open <strong>console.firebase.google.com</strong> &rarr; Create a free project &rarr; Build &rarr; <strong>Realtime Database</strong> &rarr; Create Database (Start in <strong>Test Mode</strong>).<br>
+            2. Go to <strong>Project Settings (Gear Icon)</strong> &rarr; Your Apps &rarr; Add Web App (<code>&lt;/&gt;</code>) &rarr; Copy the <code>firebaseConfig</code> object.<br>
+            3. Paste the JSON or JS config below and click <strong>Save & Connect Live Cloud</strong>.<br>
+            4. All players opening your link on any mobile will sync live in real time!
+          </p>
+          <div class="field">
+            <label>Paste Firebase Config (JSON or JS snippet)</label>
+            <textarea id="fbConfigInput" rows="6" placeholder='{"apiKey": "...", "authDomain": "...", "databaseURL": "https://...-default-rtdb.firebaseio.com", "projectId": "..."}'></textarea>
+          </div>
+          <div class="row-2">
+            <button class="btn btn-green" onclick="saveFirebaseConfig()">Save & Connect Live Cloud</button>
+            <button class="btn btn-cyan" onclick="pushLocalToCloud()">Push Local Data to Cloud</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH MODAL (SIGN UP / LOGIN) -->
+<div class="modal-bg" id="authModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('authModal')">&times;</button>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button class="tab-chip active" id="tabLoginBtn" onclick="switchAuthMode('login')">Player Login</button>
+      <button class="tab-chip" id="tabSignupBtn" onclick="switchAuthMode('signup')">New Sign Up</button>
+    </div>
+
+    <div id="loginForm">
+      <div class="field"><label>Registered Email ID or Mobile Number</label><input id="loginId" placeholder="Enter Email or 10-digit Mobile"></div>
+      <div class="field"><label>Password</label><input type="password" id="loginPass" placeholder="Enter your password"></div>
+      <button class="btn btn-gold" onclick="handleLogin()">Login to Account</button>
+    </div>
+
+    <div id="signupForm" style="display:none;">
+      <div class="field"><label>Player Full Name</label><input id="regName" placeholder="e.g., Fazil Khan"></div>
+      <div class="field"><label>Email ID</label><input type="email" id="regEmail" placeholder="player@gmail.com"></div>
+      <div class="field"><label>Mobile Number (WhatsApp Active)</label><input type="tel" id="regMobile" maxlength="10" placeholder="10-digit mobile number"></div>
+      <div class="field"><label>Create New Password</label><input type="password" id="regPass" placeholder="Min 4 characters"></div>
+      <button class="btn btn-gold" onclick="handleSignup()">Create Verified Player Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- SLOT BOOKING MODAL -->
+<div class="modal-bg" id="bookModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('bookModal')">&times;</button>
+    <h3 id="bmTitle" style="font-size:1.05rem;margin-bottom:4px;">BOOK TOURNAMENT SLOT</h3>
+    <p id="bmSub" style="font-size:0.8rem;color:var(--cyan);margin-bottom:12px;"></p>
+
+    <div class="field">
+      <label>1. Select Available Slot Number</label>
+      <div class="slot-grid" id="slotGrid"></div>
+    </div>
+
+    <div class="row-2">
+      <div class="field"><label>2. BGMI Character UID *</label><input id="bUid" placeholder="e.g., 5123456789"></div>
+      <div class="field"><label>3. BGMI ID Name (IGN) *</label><input id="bIgn" placeholder="e.g., INDRAxFAZIL"></div>
+    </div>
+
+    <div class="row-2">
+      <div class="field"><label>4. Team / Clan Name *</label><input id="bTeam" placeholder="e.g., TEAM INDRA"></div>
+      <div class="field"><label>5. Contact Mobile Number *</label><input id="bMobile" maxlength="10" placeholder="10-digit mobile"></div>
+    </div>
+
+    <!-- PAID PAYMENT GATEWAY BOX -->
+    <div id="paidGatewayBox" style="display:none;background:#090d16;border:1px solid var(--gold);border-radius:11px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:0.82rem;font-weight:700;color:var(--gold);margin-bottom:6px;">STEP 6: UPI PAYMENT GATEWAY</div>
+      <div style="font-size:0.8rem;color:var(--text);margin-bottom:8px;">
+        Pay Entry Fee <strong id="payAmtText" style="color:var(--green);">₹50</strong> via GPay / PhonePe / Paytm to:<br>
+        <span style="font-size:0.95rem;color:var(--gold);font-weight:700;">UPI / Number: 9329910287</span>
+      </div>
+      <a id="upiDeepLink" href="#" class="btn btn-cyan" style="display:block;text-align:center;text-decoration:none;margin-bottom:10px;padding:8px;">Pay Directly via UPI App</a>
+      <div class="field" style="margin-bottom:6px;">
+        <label>Enter 12-Digit UPI Transaction / UTR Number *</label>
+        <input id="bUtr" placeholder="e.g., 419823746512">
+      </div>
+      <div style="font-size:0.74rem;color:var(--muted);">After submitting below, send your payment screenshot on WhatsApp to <strong>9329910287</strong> to receive your <strong>4-Digit Admit Code</strong>.</div>
+    </div>
+
+    <button class="btn btn-gold" id="confirmBookBtn" onclick="confirmBooking()">Confirm & Submit Slot</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const OWNER_WA = "919329910287";
+const DEFAULT_PIN = "FAZIL07";
+let dbRef = null;
+let isCloudLive = false;
+let adminUnlocked = false;
+let currentFilter = "ALL";
+let selectedMatchId = null;
+let selectedSlotNum = null;
+let logoTapCount = 0;
+let logoTapTimer = null;
+
+// App State
+let state = {
+  ownerPin: DEFAULT_PIN,
+  users: [],
+  matches: [
+    {
+      id: "m_indra_1",
+      title: "INDRA PRO NIGHT SCRIMS #01",
+      map: "Erangel",
+      mode: "Squad • TPP",
+      type: "PAID",
+      fee: 50,
+      prize: 1200,
+      totalSlots: 25,
+      time: "Tonight • 9:30 PM IST",
+      roomId: "",
+      roomPass: ""
+    },
+    {
+      id: "m_indra_2",
+      title: "INDRA SUNDAY FREE COMMUNITY CUP",
+      map: "Miramar",
+      mode: "Squad • TPP",
+      type: "FREE",
+      fee: 0,
+      prize: 300,
+      totalSlots: 25,
+      time: "Tomorrow • 4:00 PM IST",
+      roomId: "",
+      roomPass: ""
+    }
+  ],
+  bookings: [],
+  tickets: []
+};
+
+function loadLocal() {
+  const saved = localStorage.getItem("indra_esports_state_v1");
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      state = { ...state, ...parsed };
+      if (!state.ownerPin) state.ownerPin = DEFAULT_PIN;
+    } catch (e) {}
+  }
+}
+
+function saveState() {
+  localStorage.setItem("indra_esports_state_v1", JSON.stringify(state));
+  if (isCloudLive && dbRef) {
+    dbRef.set(state).catch(err => console.error("Firebase sync error:", err));
+  }
+  renderAll();
+}
+
+function initFirebaseFromStorage() {
+  const raw = localStorage.getItem("indra_firebase_cfg");
+  if (!raw) return;
+  document.getElementById("fbConfigInput").value = raw;
+  connectFirebase(raw, false);
+}
+
+function parseConfigString(raw) {
+  let cleaned = raw.trim();
+  if (cleaned.includes("=")) {
+    cleaned = cleaned.substring(cleaned.indexOf("=") + 1).trim();
+  }
+  if (cleaned.endsWith(";")) cleaned = cleaned.slice(0, -1).trim();
+  cleaned = cleaned.replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":').replace(/'/g, '"');
+  return JSON.parse(cleaned);
+}
+
+function connectFirebase(raw, pushInitial) {
+  try {
+    const cfg = parseConfigString(raw);
+    if (!firebase.apps.length) {
+      firebase.initializeApp(cfg);
+    }
+    dbRef = firebase.database().ref("indra_esports_live");
+    dbRef.on("value", snap => {
+      const val = snap.val();
+      if (val) {
+        state = {
+          ownerPin: val.ownerPin || state.ownerPin || DEFAULT_PIN,
+          users: val.users || [],
+          matches: val.matches || [],
+          bookings: val.bookings || [],
+          tickets: val.tickets || []
+        };
+        localStorage.setItem("indra_esports_state_v1", JSON.stringify(state));
+        renderAll();
+      } else if (pushInitial) {
+        dbRef.set(state);
+      }
+      isCloudLive = true;
+      document.getElementById("syncDot").classList.add("live");
+      document.getElementById("syncText").textContent = "Live Cloud Synced";
+    });
+  } catch (e) {
+    showToast("Invalid Firebase config format. Check JSON keys.");
+  }
+}
+
+function saveFirebaseConfig() {
+  const raw = document.getElementById("fbConfigInput").value.trim();
+  if (!raw) return showToast("Paste your Firebase config first.");
+  localStorage.setItem("indra_firebase_cfg", raw);
+  connectFirebase(raw, true);
+  showToast("Connecting to Firebase Live Cloud...");
+}
+
+function pushLocalToCloud() {
+  if (!dbRef) return showToast("Connect Firebase config first.");
+  dbRef.set(state).then(() => showToast("All local data pushed to Live Cloud!"));
+}
+
+// SECRET 5-TAP OWNER TRIGGER
+function handleSecretLogoTap() {
+  logoTapCount++;
+  clearTimeout(logoTapTimer);
+  logoTapTimer = setTimeout(() => { logoTapCount = 0; }, 1800);
+  if (logoTapCount >= 5) {
+    logoTapCount = 0;
+    const btn = document.getElementById("ownerNavBtn");
+    btn.style.display = "inline-block";
+    showSection("admin", btn);
+    showToast("Owner Access Unlocked");
+  }
+}
+
+// AUTH SYSTEM
+function getCurrentUser() {
+  const uid = localStorage.getItem("indra_current_user_id");
+  return state.users.find(u => u.id === uid) || null;
+}
+
+function renderAuthHeader() {
+  const user = getCurrentUser();
+  const area = document.getElementById("authHeaderArea");
+  if (user) {
+    area.innerHTML = `<button class="auth-btn outline" onclick="logoutUser()">${esc(user.name.split(" ")[0])} (Logout)</button>`;
+  } else {
+    area.innerHTML = `<button class="auth-btn outline" onclick="openAuthModal('login')">Login</button> <button class="auth-btn" onclick="openAuthModal('signup')">Sign Up</button>`;
+  }
+}
+
+function openAuthModal(mode) {
+  switchAuthMode(mode);
+  document.getElementById("authModal").classList.add("open");
+}
+
+function switchAuthMode(mode) {
+  document.getElementById("loginForm").style.display = mode === "login" ? "block" : "none";
+  document.getElementById("signupForm").style.display = mode === "signup" ? "block" : "none";
+  document.getElementById("tabLoginBtn").classList.toggle("active", mode === "login");
+  document.getElementById("tabSignupBtn").classList.toggle("active", mode === "signup");
+}
+
+function handleSignup() {
+  const name = document.getElementById("regName").value.trim();
+  const email = document.getElementById("regEmail").value.trim().toLowerCase();
+  const mobile = document.getElementById("regMobile").value.trim();
+  const pass = document.getElementById("regPass").value.trim();
+
+  if (!name || !email.includes("@") || !/^\d{10}$/.test(mobile) || pass.length < 4) {
+    return showToast("Enter valid Name, Email, 10-digit Mobile & 4+ char Password.");
+  }
+  if (state.users.some(u => u.email === email || u.mobile === mobile)) {
+    return showToast("Email or Mobile already registered. Please Login.");
+  }
+  const newUser = { id: "u_" + Date.now(), name, email, mobile, pass };
+  state.users.push(newUser);
+  localStorage.setItem("indra_current_user_id", newUser.id);
+  saveState();
+  closeModal("authModal");
+  showToast("Account created & verified! Welcome " + name);
+}
+
+function handleLogin() {
+  const loginId = document.getElementById("loginId").value.trim().toLowerCase();
+  const pass = document.getElementById("loginPass").value.trim();
+  const user = state.users.find(u => (u.email === loginId || u.mobile === loginId) && u.pass === pass);
+  if (!user) return showToast("Invalid Email/Mobile or Password.");
+  localStorage.setItem("indra_current_user_id", user.id);
+  closeModal("authModal");
+  renderAll();
+  showToast("Logged in as " + user.name);
+}
+
+function logoutUser() {
+  localStorage.removeItem("indra_current_user_id");
+  renderAll();
+  showToast("Logged out.");
+}
+
+// NAVIGATION
+function showSection(sec, btn) {
+  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+  document.getElementById("sec-" + sec).classList.add("active");
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  renderAll();
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 3600);
+}
+
+function esc(str) {
+  return String(str || "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+// RENDER TOURNAMENTS
+function filterMatches(type, btn) {
+  currentFilter = type;
+  document.querySelectorAll("#sec-matches .tab-chip").forEach(c => c.classList.remove("active"));
+  btn.classList.add("active");
+  renderMatches();
+}
+
+function renderMatches() {
+  const grid = document.getElementById("matchesGrid");
+  const list = state.matches.filter(m => currentFilter === "ALL" || m.type === currentFilter);
+  if (!list.length) {
+    grid.innerHTML = `<div class="empty">No tournaments available in this category yet.</div>`;
+    return;
+  }
+  grid.innerHTML = list.map(m => {
+    const bookedCount = state.bookings.filter(b => b.matchId === m.id && b.status !== "REJECTED").length;
+    const pct = Math.min(100, Math.round((bookedCount / m.totalSlots) * 100));
+    const full = bookedCount >= m.totalSlots;
+    return `
+      <div class="card">
+        <div class="card-top">
+          <div>
+            <span class="pill ${m.type === 'FREE' ? 'free' : 'paid'}">${m.type} ROOM</span>
+            <span class="pill map">${esc(m.map)}</span>
+          </div>
+          <span style="font-size:0.76rem;color:var(--muted);">${esc(m.mode)}</span>
+        </div>
+        <h3 style="font-size:1.05rem;">${esc(m.title)}</h3>
+        <div style="font-size:0.8rem;color:var(--cyan);">&#128337; ${esc(m.time)}</div>
+        <div class="stats-row">
+          <div><div class="stat-lbl">Entry Fee</div><div class="stat-val gold">${m.type === 'FREE' ? 'FREE' : '₹' + m.fee}</div></div>
+          <div><div class="stat-lbl">Prize Pool</div><div class="stat-val green">₹${m.prize}</div></div>
+          <div><div class="stat-lbl">Slots</div><div class="stat-val">${bookedCount}/${m.totalSlots}</div></div>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+        <button class="btn ${full ? 'btn-red' : 'btn-gold'}" ${full ? 'disabled' : ''} onclick="openBookingModal('${m.id}')">
+          ${full ? 'SLOTS FULL' : 'BOOK SLOT NOW'}
+        </button>
+      </div>
+    `;
+  }).join("");
+}
+
+// SLOT BOOKING FLOW
+function openBookingModal(matchId) {
+  const user = getCurrentUser();
+  if (!user) {
+    showToast("Please Sign Up or Login with your Email & Mobile first!");
+    return openAuthModal("signup");
+  }
+  selectedMatchId = matchId;
+  selectedSlotNum = null;
+  const m = state.matches.find(x => x.id === matchId);
+  document.getElementById("bmTitle").textContent = m.title;
+  document.getElementById("bmSub").textContent = `${m.map} • ${m.mode} • ${m.type === 'FREE' ? 'FREE ENTRY' : 'Entry Fee: ₹' + m.fee}`;
+  document.getElementById("bMobile").value = user.mobile;
+  document.getElementById("bUtr").value = "";
+
+  const takenSlots = state.bookings
+    .filter(b => b.matchId === matchId && b.status !== "REJECTED")
+    .map(b => Number(b.slotNum));
+
+  let slotsHtml = "";
+  for (let i = 1; i <= m.totalSlots; i++) {
+    const isTaken = takenSlots.includes(i);
+    slotsHtml += `<div class="slot-chip ${isTaken ? 'taken' : ''}" id="sc_${i}" onclick="${isTaken ? '' : `selectSlot(${i})`}">#${i}${isTaken ? ' X' : ''}</div>`;
+  }
+  document.getElementById("slotGrid").innerHTML = slotsHtml;
+
+  const payBox = document.getElementById("paidGatewayBox");
+  if (m.type === "PAID") {
+    payBox.style.display = "block";
+    document.getElementById("payAmtText").textContent = "₹" + m.fee;
+    document.getElementById("upiDeepLink").href = `upi://pay?pa=9329910287@upi&pn=INDRA%20ESPORTS&am=${m.fee}&cu=INR`;
+  } else {
+    payBox.style.display = "none";
+  }
+
+  document.getElementById("bookModal").classList.add("open");
+}
+
+function selectSlot(num) {
+  selectedSlotNum = num;
+  document.querySelectorAll(".slot-chip").forEach(el => el.classList.remove("selected"));
+  const el = document.getElementById("sc_" + num);
+  if (el) el.classList.add("selected");
+}
+
+function confirmBooking() {
+  const user = getCurrentUser();
+  if (!user) return;
+  const m = state.matches.find(x => x.id === selectedMatchId);
+  const uid = document.getElementById("bUid").value.trim();
+  const ign = document.getElementById("bIgn").value.trim();
+  const team = document.getElementById("bTeam").value.trim();
+  const mobile = document.getElementById("bMobile").value.trim();
+  const utr = document.getElementById("bUtr").value.trim();
+
+  if (!selectedSlotNum) return showToast("Please select an available Slot Number.");
+  if (!uid || !ign || !team || !/^\d{10}$/.test(mobile)) {
+    return showToast("Fill BGMI UID, ID Name, Team Name & 10-digit Mobile.");
+  }
+  if (m.type === "PAID" && utr.length < 6) {
+    return showToast("Enter valid UPI Transaction / UTR Number after paying to 9329910287.");
+  }
+
+  const booking = {
+    id: "bk_" + Date.now(),
+    matchId: m.id,
+    matchTitle: m.title,
+    matchType: m.type,
+    fee: m.fee,
+    userId: user.id,
+    userName: user.name,
+    userEmail: user.email,
+    slotNum: selectedSlotNum,
+    bgmiUid: uid,
+    bgmiIgn: ign,
+    teamName: team,
+    mobile: mobile,
+    utr: m.type === "PAID" ? utr : "FREE_ENTRY",
+    status: m.type === "FREE" ? "VERIFIED" : "PENDING",
+    admitCode: m.type === "FREE" ? String(Math.floor(1000 + Math.random() * 9000)) : "",
+    createdAt: new Date().toLocaleString("en-IN")
+  };
+
+  state.bookings.unshift(booking);
+  saveState();
+  closeModal("bookModal");
+  showSection("myslots", document.querySelectorAll(".nav-btn")[1]);
+  showToast(m.type === "FREE" ? "Free Slot Confirmed! 4-Digit Admit Code Generated." : "Slot Submitted! Send payment proof to Owner on WhatsApp.");
+}
+
+// RENDER MY SLOTS & 4-DIGIT ADMIT CODE
+function renderMySlots() {
+  const container = document.getElementById("mySlotsContainer");
+  const user = getCurrentUser();
+  if (!user) {
+    container.innerHTML = `<div class="empty">Please Login or Sign Up to view your booked slots & 4-digit admit codes.</div>`;
+    return;
+  }
+  const mine = state.bookings.filter(b => b.userId === user.id);
+  if (!mine.length) {
+    container.innerHTML = `<div class="empty">You haven't booked any tournament slot yet.</div>`;
+    return;
+  }
+  container.innerHTML = `<div class="grid">` + mine.map(b => {
+    const match = state.matches.find(m => m.id === b.matchId) || {};
+    const waMsg = encodeURIComponent(
+      `Hello INDRA ESPORTS Owner,\nI have booked a PAID slot:\n• Match: ${b.matchTitle}\n• Slot No: #${b.slotNum}\n• BGMI IGN: ${b.bgmiIgn}\n• BGMI UID: ${b.bgmiUid}\n• Team: ${b.teamName}\n• Mobile: ${b.mobile}\n• UTR No: ${b.utr}\nPlease verify my payment & issue my 4-Digit Admit Code.`
+    );
+    return `
+      <div class="card">
+        <div class="card-top">
+          <span class="pill ${b.status === 'VERIFIED' ? 'verified' : (b.status === 'REJECTED' ? 'rejected' : 'pending')}">
+            ${b.status === 'VERIFIED' ? 'VERIFIED & ADMITTED' : (b.status === 'REJECTED' ? 'PAYMENT REJECTED' : 'PENDING PAYMENT VERIFICATION')}
+          </span>
+          <span class="pill paid">SLOT #${b.slotNum}</span>
+        </div>
+        <h3 style="font-size:1rem;">${esc(b.matchTitle)}</h3>
+        <div style="font-size:0.82rem;color:var(--muted);line-height:1.5;">
+          <strong>IGN:</strong> ${esc(b.bgmiIgn)} | <strong>UID:</strong> ${esc(b.bgmiUid)}<br>
+          <strong>Team:</strong> ${esc(b.teamName)} | <strong>Mobile:</strong> ${esc(b.mobile)}<br>
+          <strong>UTR / Ref:</strong> ${esc(b.utr)}
+        </div>
+
+        ${b.status === "VERIFIED" ? `
+          <div class="admit-box">
+            <div style="font-size:0.72rem;color:var(--cyan);font-weight:700;">VERIFIED 4-DIGIT ADMIT CODE</div>
+            <div class="admit-code">${esc(b.admitCode)}</div>
+            <div style="font-size:0.72rem;color:var(--muted);">Show this code if requested by room admin</div>
+          </div>
+          <div class="room-box">
+            <div style="color:var(--cyan);font-weight:700;margin-bottom:3px;">CUSTOM ROOM CREDENTIALS</div>
+            ${match.roomId ? `
+              <div>Room ID: <strong style="color:#fff;">${esc(match.roomId)}</strong></div>
+              <div>Password: <strong style="color:var(--gold);">${esc(match.roomPass)}</strong></div>
+            ` : `<div style="color:var(--muted);">Room ID & Password will appear here 15 mins before match time.</div>`}
+          </div>
+        ` : (b.status === "PENDING" ? `
+          <a href="https://wa.me/${OWNER_WA}?text=${waMsg}" target="_blank" class="btn btn-wa">
+            Send Proof & Details to Owner (9329910287)
+          </a>
+        ` : `<div style="color:var(--red);font-size:0.8rem;">Payment could not be verified. Contact Support.</div>`)}
+      </div>
+    `;
+  }).join("") + `</div>`;
+}
+
+// SUPPORT & OWNER WHATSAPP PERMISSION
+function submitSupportTicket() {
+  const user = getCurrentUser();
+  if (!user) {
+    showToast("Please Login first to request support.");
+    return openAuthModal("login");
+  }
+  const cat = document.getElementById("supCategory").value;
+  const msg = document.getElementById("supMessage").value.trim();
+  if (!msg) return showToast("Please write your message.");
+
+  state.tickets.unshift({
+    id: "tk_" + Date.now(),
+    userId: user.id,
+    userName: user.name,
+    userMobile: user.mobile,
+    userEmail: user.email,
+    category: cat,
+    message: msg,
+    waApproved: false,
+    ownerReply: "",
+    createdAt: new Date().toLocaleString("en-IN")
+  });
+  document.getElementById("supMessage").value = "";
+  saveState();
+  showToast("Support ticket sent! Waiting for Owner WhatsApp permission.");
+}
+
+function renderMyTickets() {
+  const box = document.getElementById("myTicketsList");
+  const user = getCurrentUser();
+  if (!user) {
+    box.innerHTML = `<div class="info-note">Login to see your support tickets & WhatsApp approval status.</div>`;
+    return;
+  }
+  const list = state.tickets.filter(t => t.userId === user.id);
+  if (!list.length) {
+    box.innerHTML = `<div class="info-note">No support requests submitted yet.</div>`;
+    return;
+  }
+  box.innerHTML = list.map(t => {
+    const waText = encodeURIComponent(`Hello INDRA ESPORTS Owner, my support request (${t.category}) was approved. Name: ${t.userName}, Mobile: ${t.userMobile}.`);
+    return `
+      <div style="background:var(--surface-2);padding:11px;border-radius:10px;margin-bottom:10px;border:1px solid rgba(255,255,255,0.08);">
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+          <span style="font-size:0.78rem;font-weight:700;color:var(--gold);">${esc(t.category)}</span>
+          <span class="pill ${t.waApproved ? 'verified' : 'pending'}">${t.waApproved ? 'WA APPROVED' : 'AWAITING OWNER'}</span>
+        </div>
+        <div style="font-size:0.82rem;margin-bottom:6px;">${esc(t.message)}</div>
+        ${t.ownerReply ? `<div style="font-size:0.78rem;color:var(--cyan);margin-bottom:7px;"><strong>Owner Reply:</strong> ${esc(t.ownerReply)}</div>` : ''}
+        ${t.waApproved ? `
+          <a href="https://wa.me/${OWNER_WA}?text=${waText}" target="_blank" class="btn btn-wa" style="padding:8px;font-size:0.88rem;">
+            Chat with Owner on WhatsApp Now
+          </a>
+        ` : `<div style="font-size:0.74rem;color:var(--muted);">WhatsApp button locked until Owner approves permission.</div>`}
+      </div>
+    `;
+  }).join("");
+}
+
+// OWNER / ADMIN FUNCTIONS
+function unlockAdmin() {
+  const pin = document.getElementById("adminPinInput").value.trim();
+  const validPin = state.ownerPin || DEFAULT_PIN;
+  if (pin !== validPin) return showToast("Incorrect Secret Owner PIN.");
+  adminUnlocked = true;
+  document.getElementById("adminLockBox").style.display = "none";
+  document.getElementById("adminDashboard").style.display = "block";
+  renderAdmin();
+}
+
+function lockAdmin() {
+  adminUnlocked = false;
+  document.getElementById("adminPinInput").value = "";
+  document.getElementById("adminLockBox").style.display = "block";
+  document.getElementById("adminDashboard").style.display = "none";
+}
+
+function updateSecretPin() {
+  const nextPin = document.getElementById("newOwnerPinInput").value.trim();
+  if (nextPin.length < 4) return showToast("PIN must be at least 4 characters.");
+  state.ownerPin = nextPin;
+  document.getElementById("newOwnerPinInput").value = "";
+  saveState();
+  showToast("Secret Owner PIN updated! Keep it safe.");
+}
+
+function switchAdminTab(tab, btn) {
+  document.querySelectorAll(".atab").forEach(el => el.style.display = "none");
+  document.getElementById("atab-" + tab).style.display = "block";
+  document.querySelectorAll("#adminDashboard .tab-chip").forEach(c => c.classList.remove("active"));
+  btn.classList.add("active");
+}
+
+function toggleFeeField() {
+  const t = document.getElementById("mType").value;
+  document.getElementById("feeFieldWrap").style.display = t === "PAID" ? "block" : "none";
+}
+
+function createTournament() {
+  const title = document.getElementById("mTitle").value.trim();
+  const map = document.getElementById("mMap").value;
+  const mode = document.getElementById("mMode").value;
+  const type = document.getElementById("mType").value;
+  const fee = type === "PAID" ? Number(document.getElementById("mFee").value || 0) : 0;
+  const prize = Number(document.getElementById("mPrize").value || 0);
+  const totalSlots = Number(document.getElementById("mSlots").value || 25);
+  const time = document.getElementById("mTime").value.trim() || "Tonight • 9:00 PM IST";
+
+  if (!title) return showToast("Enter Tournament Title.");
+  state.matches.unshift({
+    id: "m_" + Date.now(),
+    title, map, mode, type, fee, prize, totalSlots, time,
+    roomId: "", roomPass: ""
+  });
+  document.getElementById("mTitle").value = "";
+  saveState();
+  showToast("New Tournament Published Live!");
+}
+
+function verifyBooking(bookingId) {
+  const b = state.bookings.find(x => x.id === bookingId);
+  if (!b) return;
+  b.status = "VERIFIED";
+  if (!b.admitCode) {
+    b.admitCode = String(Math.floor(1000 + Math.random() * 9000));
+  }
+  saveState();
+  showToast(`Verified! 4-Digit Admit Code ${b.admitCode} issued to ${b.bgmiIgn}`);
+}
+
+function rejectBooking(bookingId) {
+  const b = state.bookings.find(x => x.id === bookingId);
+  if (!b) return;
+  b.status = "REJECTED";
+  saveState();
+  showToast("Booking marked as Rejected.");
+}
+
+function saveRoomCredentials(matchId) {
+  const m = state.matches.find(x => x.id === matchId);
+  if (!m) return;
+  m.roomId = document.getElementById("rid_" + matchId).value.trim();
+  m.roomPass = document.getElementById("rpass_" + matchId).value.trim();
+  saveState();
+  showToast("Room ID & Password updated for verified players!");
+}
+
+function deleteMatch(matchId) {
+  state.matches = state.matches.filter(m => m.id !== matchId);
+  saveState();
+  showToast("Tournament removed.");
+}
+
+function approveTicketWA(ticketId, approve) {
+  const t = state.tickets.find(x => x.id === ticketId);
+  if (!t) return;
+  t.waApproved = approve;
+  const rep = document.getElementById("trep_" + ticketId);
+  if (rep) t.ownerReply = rep.value.trim();
+  saveState();
+  showToast(approve ? "WhatsApp permission granted to player!" : "Permission revoked.");
+}
+
+function renderAdmin() {
+  if (!adminUnlocked) return;
+
+  // 1. Bookings & Payment Verification
+  const bGrid = document.getElementById("adminBookingsGrid");
+  if (!state.bookings.length) {
+    bGrid.innerHTML = `<div class="empty">No slot bookings yet.</div>`;
+  } else {
+    bGrid.innerHTML = state.bookings.map(b => {
+      const playerWa = "91" + b.mobile;
+      const codeMsg = encodeURIComponent(
+        `INDRA ESPORTS - SLOT CONFIRMED!\nMatch: ${b.matchTitle}\nSlot: #${b.slotNum}\nIGN: ${b.bgmiIgn}\nYour 4-Digit Admit Code: *${b.admitCode}*\nCheck 'My Slots' on website for Room ID & Password.`
+      );
+      return `
+        <div class="card">
+          <div class="card-top">
+            <span class="pill ${b.status === 'VERIFIED' ? 'verified' : (b.status === 'REJECTED' ? 'rejected' : 'pending')}">${b.status}</span>
+            <span class="pill paid">SLOT #${b.slotNum} • ${b.matchType}</span>
+          </div>
+          <h3 style="font-size:0.98rem;">${esc(b.matchTitle)}</h3>
+          <div style="font-size:0.8rem;color:var(--muted);line-height:1.5;">
+            <strong>Player:</strong> ${esc(b.userName)} (${esc(b.mobile)})<br>
+            <strong>BGMI IGN:</strong> ${esc(b.bgmiIgn)} | <strong>UID:</strong> ${esc(b.bgmiUid)}<br>
+            <strong>Team:</strong> ${esc(b.teamName)}<br>
+            <strong>UTR Number:</strong> <span style="color:var(--gold);font-weight:700;">${esc(b.utr)}</span>
+          </div>
+          ${b.admitCode ? `<div class="admit-box"><div style="font-size:0.7rem;">4-DIGIT ADMIT CODE</div><div class="admit-code">${b.admitCode}</div></div>` : ''}
+          <div class="row-2">
+            <button class="btn btn-green" onclick="verifyBooking('${b.id}')">${b.status === 'VERIFIED' ? 'Re-Verify' : 'Verify & Issue Code'}</button>
+            <button class="btn btn-red" onclick="rejectBooking('${b.id}')">Reject</button>
+          </div>
+          ${b.status === "VERIFIED" ? `
+            <a href="https://wa.me/${playerWa}?text=${codeMsg}" target="_blank" class="btn btn-wa" style="padding:8px;font-size:0.86rem;">
+              Send 4-Digit Admit Code to Player on WA
+            </a>
+          ` : ''}
+        </div>
+      `;
+    }).join("");
+  }
+
+  // 2. Manage Matches & Room ID
+  const mGrid = document.getElementById("adminMatchesGrid");
+  mGrid.innerHTML = state.matches.map(m => `
+    <div class="card">
+      <div class="card-top">
+        <span class="pill ${m.type === 'FREE' ? 'free' : 'paid'}">${m.type} • ₹${m.fee}</span>
+        <button class="btn-red" style="padding:3px 8px;border-radius:6px;cursor:pointer;font-size:0.74rem;" onclick="deleteMatch('${m.id}')">Delete</button>
+      </div>
+      <h3 style="font-size:0.98rem;">${esc(m.title)}</h3>
+      <div class="field" style="margin-bottom:6px;"><label>Custom Room ID</label><input id="rid_${m.id}" value="${esc(m.roomId)}" placeholder="Enter BGMI Room ID"></div>
+      <div class="field" style="margin-bottom:8px;"><label>Room Password</label><input id="rpass_${m.id}" value="${esc(m.roomPass)}" placeholder="Enter Room Password"></div>
+      <button class="btn btn-cyan" onclick="saveRoomCredentials('${m.id}')">Save Room ID & Pass</button>
+    </div>
+  `).join("");
+
+  // 3. Support Tickets & WhatsApp Permission
+  const tGrid = document.getElementById("adminTicketsGrid");
+  if (!state.tickets.length) {
+    tGrid.innerHTML = `<div class="empty">No support requests from players yet.</div>`;
+  } else {
+    tGrid.innerHTML = state.tickets.map(t => `
+      <div class="card">
+        <div class="card-top">
+          <span class="pill map">${esc(t.category)}</span>
+          <span class="pill ${t.waApproved ? 'verified' : 'pending'}">${t.waApproved ? 'WA APPROVED' : 'LOCKED'}</span>
+        </div>
+        <div style="font-size:0.82rem;"><strong>${esc(t.userName)}</strong> • ${esc(t.userMobile)}</div>
+        <div style="font-size:0.82rem;color:var(--muted);">${esc(t.message)}</div>
+        <div class="field" style="margin-bottom:6px;">
+          <input id="trep_${t.id}" value="${esc(t.ownerReply)}" placeholder="Write reply for player...">
+        </div>
+        <div class="row-2">
+          <button class="btn btn-green" onclick="approveTicketWA('${t.id}', true)">Approve WA Chat</button>
+          <button class="btn btn-red" onclick="approveTicketWA('${t.id}', false)">Revoke WA</button>
+        </div>
+      </div>
+    `).join("");
+  }
+}
+
+function renderAll() {
+  renderAuthHeader();
+  renderMatches();
+  renderMySlots();
+  renderMyTickets();
+  renderAdmin();
+}
+
+// INIT
+loadLocal();
+initFirebaseFromStorage();
+renderAll();
+</script>
+</body>
+</html>
